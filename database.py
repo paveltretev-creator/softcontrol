@@ -140,3 +140,19 @@ def set_project_developers(project_id: int, new_developer_ids: list):
 
     conn.commit()
     conn.close()
+
+# Достаём проекты, в которых участвует разработчик, сразу с руководителем
+def get_developer_projects(developer_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = '''
+        SELECT p.id, p.name, p.description, p.deadline, m.fio
+        FROM projects p
+        LEFT JOIN managers m ON p.manager_id = m.id
+        JOIN project_developers pd ON p.id = pd.project_id
+        WHERE pd.developer_id = ?
+    '''
+    cursor.execute(query, (developer_id,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
