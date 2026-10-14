@@ -13,7 +13,6 @@ class DeveloperWindow(QWidget):
         super().__init__()
         self.user_data = user_data
         self.setWindowTitle("Софт контроль — Разработчик")
-        self.setMinimumSize(900, 600)
         self.init_ui()
         self.load_projects()
 

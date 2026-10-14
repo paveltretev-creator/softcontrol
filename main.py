@@ -11,7 +11,7 @@ class AppController:
     def __init__(self):
         self.stack = QStackedWidget()
         self.stack.setWindowTitle("Софт контроль")
-        self.stack.resize(250, 180)
+        self.stack.resize(900, 600)
 
         self.login_window = LoginWindow()
         self.login_window.login_success.connect(self.on_login_success)

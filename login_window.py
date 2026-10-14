@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel,
-QLineEdit, QPushButton, QMessageBox, QFormLayout)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                              QLineEdit, QPushButton, QMessageBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 import database
@@ -11,7 +11,6 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Софт контроль — Вход")
-        self.setFixedSize(280, 180)
         self.init_ui()
 
     def init_ui(self):
@@ -24,29 +23,47 @@ class LoginWindow(QWidget):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        form = QFormLayout()
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(6)
+        # Растяжка сверху — толкает всё вниз к центру
+        layout.addStretch()
 
+        # Поле логина — центрируем через растяжки по бокам
+        login_row = QHBoxLayout()
+        login_row.addStretch()
         self.login_input = QLineEdit()
         self.login_input.setPlaceholderText("Логин")
+        self.login_input.setFixedWidth(180)
         self.login_input.setFixedHeight(25)
         self.login_input.setStyleSheet("padding: 2px 5px;")
+        login_row.addWidget(self.login_input)
+        login_row.addStretch()
+        layout.addLayout(login_row)
 
+        # Поле пароля — тоже центрируем
+        password_row = QHBoxLayout()
+        password_row.addStretch()
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Пароль")
         self.password_input.setEchoMode(QLineEdit.Password)
+        self.password_input.setFixedWidth(180)
         self.password_input.setFixedHeight(25)
         self.password_input.setStyleSheet("padding: 2px 5px;")
+        password_row.addWidget(self.password_input)
+        password_row.addStretch()
+        layout.addLayout(password_row)
 
-        form.addRow("Логин:", self.login_input)
-        form.addRow("Пароль:", self.password_input)
-        layout.addLayout(form)
-
+        # Кнопка входа — центрируем
+        button_row = QHBoxLayout()
+        button_row.addStretch()
         self.login_button = QPushButton("Войти")
+        self.login_button.setFixedWidth(120)
         self.login_button.setFixedHeight(28)
         self.login_button.clicked.connect(self.try_login)
-        layout.addWidget(self.login_button)
+        button_row.addWidget(self.login_button)
+        button_row.addStretch()
+        layout.addLayout(button_row)
+
+        # Растяжка снизу — толкает всё вверх к центру
+        layout.addStretch()
 
         self.setLayout(layout)
 
@@ -63,6 +80,7 @@ class LoginWindow(QWidget):
             return
 
         user = database.authenticate_user(login, password)
+
         if user:
             self.login_success.emit(user)
         else:
