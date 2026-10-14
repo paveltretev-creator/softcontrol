@@ -1,5 +1,4 @@
 import sqlite3
-
 DB_NAME = 'company_projects.db'
 
 # Работаем с SQLite — тут вся логика общения с базой
@@ -12,7 +11,6 @@ def get_connection():
 def authenticate_user(login: str, password: str):
     conn = get_connection()
     cursor = conn.cursor()
-
     query = '''
         SELECT id, fio, 'developer' AS role FROM developers WHERE login = ? AND password = ?
         UNION ALL
@@ -23,7 +21,6 @@ def authenticate_user(login: str, password: str):
     cursor.execute(query, (login, password, login, password, login, password))
     result = cursor.fetchone()
     conn.close()
-
     if result:
         return {
             'id': result[0],
@@ -37,7 +34,7 @@ def get_customer_projects(customer_id: int):
     cursor = conn.cursor()
     # Projects с джойном менеджера — чтобы сразу тянуть его ФИО
     query = '''
-        SELECT p.name, p.description, m.fio, p.deadline
+        SELECT p.id, p.name, p.description, m.fio, p.deadline
         FROM projects p
         LEFT JOIN managers m ON p.manager_id = m.id
         WHERE p.customer_id = ?
@@ -53,7 +50,7 @@ def get_manager_projects(manager_id: int):
     # Склеиваем разработчиков через GROUP_CONCAT, чтобы в таблице было красиво
     query = '''
         SELECT p.id, p.name, p.description, p.deadline,
-               GROUP_CONCAT(d.fio, ', ')
+        GROUP_CONCAT(d.fio, ', ')
         FROM projects p
         LEFT JOIN project_developers pd ON p.id = pd.project_id
         LEFT JOIN developers d ON pd.developer_id = d.id
@@ -109,7 +106,6 @@ def update_project_info(project_id: int, name: str, description: str):
 def set_project_developers(project_id: int, new_developer_ids: list):
     conn = get_connection()
     cursor = conn.cursor()
-
     cursor.execute(
         'SELECT developer_id FROM project_developers WHERE project_id = ?',
         (project_id,)
@@ -118,7 +114,7 @@ def set_project_developers(project_id: int, new_developer_ids: list):
     new_ids = set(new_developer_ids)
     added = new_ids - old_ids
     removed = old_ids - new_ids
-
+    
     cursor.execute('DELETE FROM project_developers WHERE project_id = ?',
                    (project_id,))
     for dev_id in new_ids:
@@ -126,7 +122,6 @@ def set_project_developers(project_id: int, new_developer_ids: list):
             'INSERT INTO project_developers (project_id, developer_id) VALUES (?, ?)',
             (project_id, dev_id)
         )
-
     for dev_id in added:
         cursor.execute(
             'UPDATE developers SET current_project_id = ? WHERE id = ?',
@@ -137,7 +132,6 @@ def set_project_developers(project_id: int, new_developer_ids: list):
             'UPDATE developers SET current_project_id = NULL WHERE id = ?',
             (dev_id,)
         )
-
     conn.commit()
     conn.close()
 
@@ -153,6 +147,53 @@ def get_developer_projects(developer_id: int):
         WHERE pd.developer_id = ?
     '''
     cursor.execute(query, (developer_id,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+# ============ НОВЫЕ ФУНКЦИИ ДЛЯ ЧАТА ============
+
+def init_chat_table():
+    """Создаёт таблицу для сообщений чата, если её ещё нет"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            sender_role TEXT NOT NULL,
+            sender_fio TEXT NOT NULL,
+            message TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_chat_message(project_id: int, sender_id: int, sender_role: str, 
+                      sender_fio: str, message: str):
+    """Сохраняет сообщение в базу данных"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO chat_messages (project_id, sender_id, sender_role, sender_fio, message)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (project_id, sender_id, sender_role, sender_fio, message))
+    conn.commit()
+    conn.close()
+
+def get_chat_messages(project_id: int):
+    """Получает все сообщения для указанного проекта, отсортированные по времени"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT sender_fio, sender_role, message, timestamp
+        FROM chat_messages
+        WHERE project_id = ?
+        ORDER BY timestamp ASC
+    ''', (project_id,))
     result = cursor.fetchall()
     conn.close()
     return result
