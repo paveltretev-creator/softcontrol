@@ -1,4 +1,3 @@
-# Тестовый комментарий для проверки
 import sys
 from PyQt5.QtWidgets import QApplication, QStackedWidget
 from PyQt5.QtCore import Qt
