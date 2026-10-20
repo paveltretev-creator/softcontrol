@@ -1,18 +1,29 @@
+"""
+Окно авторизации пользователя.
+
+Содержит поля ввода логина и пароля, кнопку «Войти»
+и отправляет сигнал login_success при успешной проверке.
+"""
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                              QLineEdit, QPushButton, QMessageBox)
+                             QLineEdit, QPushButton, QMessageBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 import database
 
+
 class LoginWindow(QWidget):
+    """Виджет окна входа в систему «Софт контроль»."""
+
     login_success = pyqtSignal(dict)
 
     def __init__(self):
+        """Создаёт окно и инициализирует интерфейс."""
         super().__init__()
         self.setWindowTitle("Софт контроль — Вход")
         self.init_ui()
 
     def init_ui(self):
+        """Формирует визуальную часть окна: заголовок, поля, кнопку."""
         layout = QVBoxLayout()
         layout.setContentsMargins(15, 10, 15, 10)
         layout.setSpacing(8)
@@ -21,7 +32,6 @@ class LoginWindow(QWidget):
         title.setFont(QFont("Arial", 14, QFont.Bold))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
-
         layout.addStretch()
 
         login_row = QHBoxLayout()
@@ -58,12 +68,17 @@ class LoginWindow(QWidget):
         layout.addLayout(button_row)
 
         layout.addStretch()
-
         self.setLayout(layout)
 
         self.password_input.returnPressed.connect(self.try_login)
 
     def try_login(self):
+        """
+        Пытается авторизовать пользователя по введённым данным.
+
+        При успехе испускает сигнал login_success с данными пользователя,
+        при неудаче показывает сообщение об ошибке.
+        """
         login = self.login_input.text().strip()
         password = self.password_input.text().strip()
 
@@ -72,7 +87,6 @@ class LoginWindow(QWidget):
             return
 
         user = database.authenticate_user(login, password)
-
         if user:
             self.login_success.emit(user)
         else:
