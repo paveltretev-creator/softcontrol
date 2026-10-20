@@ -5,6 +5,7 @@ from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import pyqtSignal, Qt
 import database
 from edit_project_dialog import EditProjectDialog
+from project_info_dialog import ProjectInfoDialog
 
 # Кабинет руководителя — можно редактировать проекты и менять команду
 class ManagerWindow(QWidget):
@@ -39,7 +40,11 @@ class ManagerWindow(QWidget):
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
 
-        self.edit_btn = QPushButton("✏️ Редактировать выбранный")
+        self.info_btn = QPushButton("ℹ️ Информация")
+        self.info_btn.clicked.connect(self.show_project_info)
+        table_header_layout.addWidget(self.info_btn)
+
+        self.edit_btn = QPushButton("✏️ Редактировать")
         self.edit_btn.clicked.connect(self.edit_selected_project)
         table_header_layout.addWidget(self.edit_btn)
 
@@ -152,6 +157,31 @@ class ManagerWindow(QWidget):
         self.current_project_id = item.data(Qt.UserRole)
         self.load_chat_messages()
 
+    def show_project_info(self):
+        """Открывает диалог с детальной информацией о выбранном проекте"""
+        selected = self.projects_table.selectionModel().selectedRows()
+        if not selected:
+            QMessageBox.information(self, "Внимание", "Сначала выберите проект в таблице")
+            return
+        
+        row = selected[0].row()
+        item = self.projects_table.item(row, 0)
+        if not item:
+            return
+        
+        project_id = item.data(Qt.UserRole)
+        
+        try:
+            project_info = database.get_full_project_info(project_id)
+            if not project_info:
+                QMessageBox.warning(self, "Ошибка", "Проект не найден в БД")
+                return
+            
+            dialog = ProjectInfoDialog(project_info, parent=self)
+            dialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить информацию:\n{e}")
+
     def load_chat_messages(self):
         if not self.current_project_id:
             self.chat_display.clear()
@@ -169,14 +199,12 @@ class ManagerWindow(QWidget):
             self.chat_display.setPlaceholderText("Сообщений пока нет. Будьте первым!")
             return
 
-        # Словарь для преобразования ролей в текст
         role_text = {
             "developer": "Разработчик",
             "customer": "Заказчик",
             "manager": "Руководитель"
         }
         
-        # Словарь месяцев на русском
         months = {
             '01': 'января', '02': 'февраля', '03': 'марта', '04': 'апреля',
             '05': 'мая', '06': 'июня', '07': 'июля', '08': 'августа',
@@ -184,18 +212,15 @@ class ManagerWindow(QWidget):
         }
 
         for sender_fio, sender_role, message, timestamp in messages:
-            # Получаем текст роли
             role = role_text.get(sender_role, "Пользователь")
             
-            # Парсим дату из timestamp (формат: "2026-10-14 15:30:45")
             try:
-                date_part = timestamp.split()[0]  # "2026-10-14"
+                date_part = timestamp.split()[0]
                 year, month, day = date_part.split('-')
                 formatted_date = f"{int(day)} {months[month]}"
             except:
-                formatted_date = timestamp  # Если не удалось распарсить, показываем как есть
+                formatted_date = timestamp
             
-            # Форматируем сообщение
             formatted_msg = f"<b>{sender_fio}</b> <i>({role}, {formatted_date})</i><br>{message}<br><br>"
             self.chat_display.append(formatted_msg)
         

@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import pyqtSignal, Qt
 import database
+from project_info_dialog import ProjectInfoDialog
 
 # Кабинет заказчика — показывает его проекты
 class CustomerWindow(QWidget):
@@ -36,6 +37,10 @@ class CustomerWindow(QWidget):
         table_title.setFont(QFont("Arial", 12, QFont.Bold))
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
+
+        self.info_btn = QPushButton("ℹ️ Информация")
+        self.info_btn.clicked.connect(self.show_project_info)
+        table_header_layout.addWidget(self.info_btn)
 
         refresh_btn = QPushButton("🔄 Обновить")
         refresh_btn.clicked.connect(self.load_projects)
@@ -138,6 +143,31 @@ class CustomerWindow(QWidget):
             return
         self.current_project_id = item.data(Qt.UserRole)
         self.load_chat_messages()
+
+    def show_project_info(self):
+        """Открывает диалог с детальной информацией о выбранном проекте"""
+        selected = self.projects_table.selectionModel().selectedRows()
+        if not selected:
+            QMessageBox.information(self, "Внимание", "Сначала выберите проект в таблице")
+            return
+        
+        row = selected[0].row()
+        item = self.projects_table.item(row, 0)
+        if not item:
+            return
+        
+        project_id = item.data(Qt.UserRole)
+        
+        try:
+            project_info = database.get_full_project_info(project_id)
+            if not project_info:
+                QMessageBox.warning(self, "Ошибка", "Проект не найден в БД")
+                return
+            
+            dialog = ProjectInfoDialog(project_info, parent=self)
+            dialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить информацию:\n{e}")
 
     def load_chat_messages(self):
         if not self.current_project_id:

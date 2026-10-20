@@ -1,13 +1,11 @@
 import sqlite3
 DB_NAME = 'company_projects.db'
 
-# Работаем с SQLite — тут вся логика общения с базой
 def get_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.execute('PRAGMA foreign_keys = ON;')
     return conn
 
-# Ищем юзера сразу во всех трёх таблицах (разработчики, заказчики, руководители)
 def authenticate_user(login: str, password: str):
     conn = get_connection()
     cursor = conn.cursor()
@@ -32,7 +30,6 @@ def authenticate_user(login: str, password: str):
 def get_customer_projects(customer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
-    # Projects с джойном менеджера — чтобы сразу тянуть его ФИО
     query = '''
         SELECT p.id, p.name, p.description, m.fio, p.deadline
         FROM projects p
@@ -47,7 +44,6 @@ def get_customer_projects(customer_id: int):
 def get_manager_projects(manager_id: int):
     conn = get_connection()
     cursor = conn.cursor()
-    # Склеиваем разработчиков через GROUP_CONCAT, чтобы в таблице было красиво
     query = '''
         SELECT p.id, p.name, p.description, p.deadline,
         GROUP_CONCAT(d.fio, ', ')
@@ -102,7 +98,6 @@ def update_project_info(project_id: int, name: str, description: str):
     conn.commit()
     conn.close()
 
-# Тут хитро: удаляем старые связи и пишем новые, плюс обновляем current_project_id у самих разработчиков
 def set_project_developers(project_id: int, new_developer_ids: list):
     conn = get_connection()
     cursor = conn.cursor()
@@ -135,7 +130,6 @@ def set_project_developers(project_id: int, new_developer_ids: list):
     conn.commit()
     conn.close()
 
-# Достаём проекты, в которых участвует разработчик, сразу с руководителем
 def get_developer_projects(developer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -151,10 +145,7 @@ def get_developer_projects(developer_id: int):
     conn.close()
     return result
 
-# ============ НОВЫЕ ФУНКЦИИ ДЛЯ ЧАТА ============
-
 def init_chat_table():
-    """Создаёт таблицу для сообщений чата, если её ещё нет"""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -174,7 +165,6 @@ def init_chat_table():
 
 def save_chat_message(project_id: int, sender_id: int, sender_role: str, 
                       sender_fio: str, message: str):
-    """Сохраняет сообщение в базу данных"""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -185,7 +175,6 @@ def save_chat_message(project_id: int, sender_id: int, sender_role: str,
     conn.close()
 
 def get_chat_messages(project_id: int):
-    """Получает все сообщения для указанного проекта, отсортированные по времени"""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -197,3 +186,80 @@ def get_chat_messages(project_id: int):
     result = cursor.fetchall()
     conn.close()
     return result
+
+def get_full_project_info(project_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT p.name, p.description, p.deadline, p.github_url,
+               m.fio as manager_fio, c.fio as customer_fio
+        FROM projects p
+        LEFT JOIN managers m ON p.manager_id = m.id
+        LEFT JOIN customers c ON p.customer_id = c.id
+        WHERE p.id = ?
+    ''', (project_id,))
+    project_info = cursor.fetchone()
+    
+    if not project_info:
+        conn.close()
+        return None
+    
+    name, description, deadline, github_url, manager_fio, customer_fio = project_info
+    
+    cursor.execute('''
+        SELECT d.fio
+        FROM developers d
+        JOIN project_developers pd ON d.id = pd.developer_id
+        WHERE pd.project_id = ?
+        ORDER BY d.fio
+    ''', (project_id,))
+    developers = [row[0] for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return {
+        'name': name,
+        'description': description,
+        'deadline': deadline,
+        'github_url': github_url,
+        'manager_fio': manager_fio,
+        'customer_fio': customer_fio,
+        'developers': developers
+    }
+
+# ============ НОВЫЕ ФУНКЦИИ ДЛЯ GITHUB ============
+
+def get_project_github_url(project_id: int):
+    """Получает GitHub-ссылку проекта"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'SELECT github_url FROM projects WHERE id = ?',
+        (project_id,)
+    )
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
+def update_project_github_url(project_id: int, github_url: str):
+    """Обновляет GitHub-ссылку проекта"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'UPDATE projects SET github_url = ? WHERE id = ?',
+        (github_url, project_id)
+    )
+    conn.commit()
+    conn.close()
+
+def init_github_column():
+    """Добавляет колонку github_url в таблицу projects, если её нет"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('ALTER TABLE projects ADD COLUMN github_url TEXT')
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Колонка уже существует
+    conn.close()
