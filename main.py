@@ -5,12 +5,13 @@ from login_window import LoginWindow
 from developer_window import DeveloperWindow
 from customer_window import CustomerWindow
 from manager_window import ManagerWindow
+from admin_window import AdminWindow
 import database
 
 class AppController:
     def __init__(self):
         database.init_chat_table()
-        database.init_github_column()  # НОВОЕ: добавляем колонку GitHub
+        database.init_github_column()
         
         self.stack = QStackedWidget()
         self.stack.setWindowTitle("Софт контроль")
@@ -36,6 +37,8 @@ class AppController:
             window = CustomerWindow(user_data)
         elif role == 'manager':
             window = ManagerWindow(user_data)
+        elif role == 'admin':
+            window = AdminWindow(user_data)
         else:
             return
 

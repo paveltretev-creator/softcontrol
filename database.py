@@ -15,8 +15,10 @@ def authenticate_user(login: str, password: str):
         SELECT id, fio, 'customer'  AS role FROM customers  WHERE login = ? AND password = ?
         UNION ALL
         SELECT id, fio, 'manager'   AS role FROM managers   WHERE login = ? AND password = ?
+        UNION ALL
+        SELECT id, fio, 'admin'     AS role FROM admins     WHERE login = ? AND password = ?
     '''
-    cursor.execute(query, (login, password, login, password, login, password))
+    cursor.execute(query, (login, password, login, password, login, password, login, password))
     result = cursor.fetchone()
     conn.close()
     if result:
@@ -58,6 +60,23 @@ def get_manager_projects(manager_id: int):
     conn.close()
     return result
 
+# НОВАЯ ФУНКЦИЯ: Получаем ВСЕ проекты для админа
+def get_all_projects():
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = '''
+        SELECT p.id, p.name, p.description, p.deadline,
+               m.fio as manager_fio, c.fio as customer_fio
+        FROM projects p
+        LEFT JOIN managers m ON p.manager_id = m.id
+        LEFT JOIN customers c ON p.customer_id = c.id
+        ORDER BY p.id
+    '''
+    cursor.execute(query)
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
 def get_project_details(project_id: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -73,6 +92,22 @@ def get_all_developers():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT id, fio FROM developers ORDER BY fio')
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def get_all_managers():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, fio FROM managers ORDER BY fio')
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def get_all_customers():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, fio FROM customers ORDER BY fio')
     result = cursor.fetchall()
     conn.close()
     return result
@@ -127,6 +162,17 @@ def set_project_developers(project_id: int, new_developer_ids: list):
             'UPDATE developers SET current_project_id = NULL WHERE id = ?',
             (dev_id,)
         )
+    conn.commit()
+    conn.close()
+
+# НОВАЯ ФУНКЦИЯ: Назначаем менеджера и заказчика на проект
+def set_project_manager_and_customer(project_id: int, manager_id: int, customer_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'UPDATE projects SET manager_id = ?, customer_id = ? WHERE id = ?',
+        (manager_id, customer_id, project_id)
+    )
     conn.commit()
     conn.close()
 
@@ -228,10 +274,7 @@ def get_full_project_info(project_id: int):
         'developers': developers
     }
 
-# ============ НОВЫЕ ФУНКЦИИ ДЛЯ GITHUB ============
-
 def get_project_github_url(project_id: int):
-    """Получает GitHub-ссылку проекта"""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -243,7 +286,6 @@ def get_project_github_url(project_id: int):
     return result[0] if result else None
 
 def update_project_github_url(project_id: int, github_url: str):
-    """Обновляет GitHub-ссылку проекта"""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -254,12 +296,24 @@ def update_project_github_url(project_id: int, github_url: str):
     conn.close()
 
 def init_github_column():
-    """Добавляет колонку github_url в таблицу projects, если её нет"""
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute('ALTER TABLE projects ADD COLUMN github_url TEXT')
         conn.commit()
     except sqlite3.OperationalError:
-        pass  # Колонка уже существует
+        pass
     conn.close()
+
+# НОВАЯ ФУНКЦИЯ: Создаём новый проект
+def create_project(name: str, description: str, deadline: str, manager_id: int, customer_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects (name, description, deadline, manager_id, customer_id)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (name, description, deadline, manager_id, customer_id))
+    project_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return project_id
