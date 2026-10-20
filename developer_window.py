@@ -7,14 +7,13 @@ import database
 from project_info_dialog import ProjectInfoDialog
 from github_dialog import GitHubDialog
 
-# Кабинет разработчика — просмотр проектов, чат и GitHub
 class DeveloperWindow(QWidget):
     logout_requested = pyqtSignal()
 
     def __init__(self, user_data: dict):
         super().__init__()
         self.user_data = user_data
-        self.current_project_id = None  # ID выбранного проекта для чата
+        self.current_project_id = None
         self.setWindowTitle("Софт контроль — Разработчик")
         self.init_ui()
         self.load_projects()
@@ -29,10 +28,8 @@ class DeveloperWindow(QWidget):
         user_info = QLabel(f"Пользователь: {self.user_data['fio']}")
         layout.addWidget(user_info)
 
-        # Разделяем экран на таблицу (слева) и чат (справа)
         content_layout = QHBoxLayout()
 
-        # ЛЕВАЯ ЧАСТЬ: Таблица проектов
         left_layout = QVBoxLayout()
         table_header_layout = QHBoxLayout()
         table_title = QLabel("Мои проекты:")
@@ -40,17 +37,15 @@ class DeveloperWindow(QWidget):
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
 
-        # Кнопка просмотра информации о проекте
-        self.info_btn = QPushButton("ℹ️ Информация")
+        self.info_btn = QPushButton("Информация")
         self.info_btn.clicked.connect(self.show_project_info)
         table_header_layout.addWidget(self.info_btn)
 
-        # Кнопка редактирования GitHub-ссылки
-        self.github_btn = QPushButton("🔗 GitHub")
+        self.github_btn = QPushButton("GitHub")
         self.github_btn.clicked.connect(self.edit_github_url)
         table_header_layout.addWidget(self.github_btn)
 
-        refresh_btn = QPushButton("🔄 Обновить")
+        refresh_btn = QPushButton("Обновить")
         refresh_btn.clicked.connect(self.load_projects)
         table_header_layout.addWidget(refresh_btn)
         left_layout.addLayout(table_header_layout)
@@ -72,12 +67,11 @@ class DeveloperWindow(QWidget):
         self.projects_table.setSelectionMode(QTableWidget.SingleSelection)
         self.projects_table.setAlternatingRowColors(True)
         self.projects_table.verticalHeader().setVisible(False)
-        # При выборе строки — обновляем чат
+
         self.projects_table.currentCellChanged.connect(self.on_project_selected)
         left_layout.addWidget(self.projects_table)
         content_layout.addLayout(left_layout, 3)
 
-        # ПРАВАЯ ЧАСТЬ: Окно чата
         chat_frame = QFrame()
         chat_frame.setStyleSheet("QFrame { border: 1px solid #cccccc; border-radius: 5px; }")
         chat_layout = QVBoxLayout(chat_frame)
@@ -94,7 +88,7 @@ class DeveloperWindow(QWidget):
         chat_input_layout = QHBoxLayout()
         self.chat_input = QLineEdit()
         self.chat_input.setPlaceholderText("Введите сообщение...")
-        self.chat_input.returnPressed.connect(self.send_message)  # Enter для отправки
+        self.chat_input.returnPressed.connect(self.send_message)
         chat_input_layout.addWidget(self.chat_input)
 
         send_btn = QPushButton("Отправить")
@@ -156,7 +150,6 @@ class DeveloperWindow(QWidget):
         self.projects_table.resizeRowsToContents()
 
     def on_project_selected(self, row, col, prev_row, prev_col):
-        """При выборе проекта — загружаем его чат"""
         if row < 0:
             return
         item = self.projects_table.item(row, 0)
@@ -166,7 +159,7 @@ class DeveloperWindow(QWidget):
         self.load_chat_messages()
 
     def show_project_info(self):
-        """Открывает диалог с детальной информацией о проекте"""
+
         selected = self.projects_table.selectionModel().selectedRows()
         if not selected:
             QMessageBox.information(self, "Внимание", "Сначала выберите проект в таблице")
@@ -191,7 +184,7 @@ class DeveloperWindow(QWidget):
             QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить информацию:\n{e}")
 
     def edit_github_url(self):
-        """Открывает диалог для редактирования GitHub-ссылки"""
+
         selected = self.projects_table.selectionModel().selectedRows()
         if not selected:
             QMessageBox.information(self, "Внимание", "Сначала выберите проект в таблице")
@@ -216,7 +209,7 @@ class DeveloperWindow(QWidget):
             QMessageBox.critical(self, "Ошибка", f"Не удалось обновить ссылку:\n{e}")
 
     def load_chat_messages(self):
-        """Загружает историю чата для выбранного проекта"""
+
         if not self.current_project_id:
             self.chat_display.clear()
             self.chat_display.setPlaceholderText("Выберите проект для просмотра чата...")
@@ -262,7 +255,7 @@ class DeveloperWindow(QWidget):
         scrollbar.setValue(scrollbar.maximum())
 
     def send_message(self):
-        """Отправляет сообщение в чат выбранного проекта"""
+
         if not self.current_project_id:
             QMessageBox.warning(self, "Внимание", "Сначала выберите проект в таблице")
             return

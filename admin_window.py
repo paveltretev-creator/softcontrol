@@ -30,7 +30,6 @@ class AdminWindow(QWidget):
 
         content_layout = QHBoxLayout()
 
-        # ЛЕВАЯ ЧАСТЬ: Таблица всех проектов
         left_layout = QVBoxLayout()
         
         table_header_layout = QHBoxLayout()
@@ -39,15 +38,15 @@ class AdminWindow(QWidget):
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
 
-        self.create_btn = QPushButton("➕ Создать проект")
+        self.create_btn = QPushButton("Создать проект")
         self.create_btn.clicked.connect(self.create_project)
         table_header_layout.addWidget(self.create_btn)
 
-        self.info_btn = QPushButton("ℹ️ Информация")
+        self.info_btn = QPushButton("Информация")
         self.info_btn.clicked.connect(self.show_project_info)
         table_header_layout.addWidget(self.info_btn)
 
-        refresh_btn = QPushButton("🔄 Обновить")
+        refresh_btn = QPushButton("Обновить")
         refresh_btn.clicked.connect(self.load_projects)
         table_header_layout.addWidget(refresh_btn)
         
@@ -75,7 +74,6 @@ class AdminWindow(QWidget):
         left_layout.addWidget(self.projects_table)
         content_layout.addLayout(left_layout, 3)
 
-        # ПРАВАЯ ЧАСТЬ: Окно чата
         chat_frame = QFrame()
         chat_frame.setStyleSheet("QFrame { border: 1px solid #cccccc; border-radius: 5px; }")
         chat_layout = QVBoxLayout(chat_frame)

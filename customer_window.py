@@ -6,7 +6,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 import database
 from project_info_dialog import ProjectInfoDialog
 
-# Кабинет заказчика — показывает его проекты
+
 class CustomerWindow(QWidget):
     logout_requested = pyqtSignal()
 
@@ -30,7 +30,6 @@ class CustomerWindow(QWidget):
 
         content_layout = QHBoxLayout()
 
-        # ЛЕВАЯ ЧАСТЬ: Таблица
         left_layout = QVBoxLayout()
         table_header_layout = QHBoxLayout()
         table_title = QLabel("Мои проекты:")
@@ -38,11 +37,11 @@ class CustomerWindow(QWidget):
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
 
-        self.info_btn = QPushButton("ℹ️ Информация")
+        self.info_btn = QPushButton("Информация")
         self.info_btn.clicked.connect(self.show_project_info)
         table_header_layout.addWidget(self.info_btn)
 
-        refresh_btn = QPushButton("🔄 Обновить")
+        refresh_btn = QPushButton("Обновить")
         refresh_btn.clicked.connect(self.load_projects)
         table_header_layout.addWidget(refresh_btn)
         left_layout.addLayout(table_header_layout)
@@ -60,7 +59,6 @@ class CustomerWindow(QWidget):
         left_layout.addWidget(self.projects_table)
         content_layout.addLayout(left_layout, 3)
 
-        # ПРАВАЯ ЧАСТЬ: Чат
         chat_frame = QFrame()
         chat_frame.setStyleSheet("QFrame { border: 1px solid #cccccc; border-radius: 5px; }")
         chat_layout = QVBoxLayout(chat_frame)
@@ -145,7 +143,7 @@ class CustomerWindow(QWidget):
         self.load_chat_messages()
 
     def show_project_info(self):
-        """Открывает диалог с детальной информацией о выбранном проекте"""
+
         selected = self.projects_table.selectionModel().selectedRows()
         if not selected:
             QMessageBox.information(self, "Внимание", "Сначала выберите проект в таблице")

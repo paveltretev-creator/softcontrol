@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
 from PyQt5.QtCore import Qt
 import re
 
-# Диалог для ввода GitHub-ссылки
 class GitHubDialog(QDialog):
     def __init__(self, current_url: str = "", parent=None):
         super().__init__(parent)
@@ -33,7 +32,6 @@ class GitHubDialog(QDialog):
         self.setLayout(layout)
 
     def validate_and_accept(self):
-        """Проверяет валидность URL перед сохранением"""
         url = self.url_input.text().strip()
         
         if not url:
@@ -41,7 +39,6 @@ class GitHubDialog(QDialog):
             self.accept()
             return
         
-        # Простая проверка формата URL
         url_pattern = re.compile(
             r'^https?://'  # http:// или https://
             r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # домен
@@ -54,7 +51,6 @@ class GitHubDialog(QDialog):
             QMessageBox.warning(self, "Ошибка", "Некорректный формат URL")
             return
         
-        # Дополнительная проверка на GitHub
         if 'github.com' not in url.lower():
             reply = QMessageBox.question(
                 self, "Предупреждение",
@@ -68,5 +64,4 @@ class GitHubDialog(QDialog):
         self.accept()
 
     def get_url(self):
-        """Возвращает введённую ссылку"""
         return self.url_input.text().strip()

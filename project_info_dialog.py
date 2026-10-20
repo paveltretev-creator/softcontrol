@@ -47,7 +47,6 @@ class ProjectInfoDialog(QDialog):
         form.addRow(customer_label)
         form.addRow(QLabel(self.project_info['customer_fio'] or "Не указан"))
         
-        # НОВОЕ: GitHub-ссылка
         github_label = QLabel("GitHub:")
         github_label.setFont(QFont("Arial", 10, QFont.Bold))
         form.addRow(github_label)

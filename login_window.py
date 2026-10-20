@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 import database
 
-# Окно входа в систему
 class LoginWindow(QWidget):
     login_success = pyqtSignal(dict)
 
@@ -23,10 +22,8 @@ class LoginWindow(QWidget):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        # Растяжка сверху — толкает всё вниз к центру
         layout.addStretch()
 
-        # Поле логина — центрируем через растяжки по бокам
         login_row = QHBoxLayout()
         login_row.addStretch()
         self.login_input = QLineEdit()
@@ -38,7 +35,6 @@ class LoginWindow(QWidget):
         login_row.addStretch()
         layout.addLayout(login_row)
 
-        # Поле пароля — тоже центрируем
         password_row = QHBoxLayout()
         password_row.addStretch()
         self.password_input = QLineEdit()
@@ -51,7 +47,6 @@ class LoginWindow(QWidget):
         password_row.addStretch()
         layout.addLayout(password_row)
 
-        # Кнопка входа — центрируем
         button_row = QHBoxLayout()
         button_row.addStretch()
         self.login_button = QPushButton("Войти")
@@ -62,15 +57,12 @@ class LoginWindow(QWidget):
         button_row.addStretch()
         layout.addLayout(button_row)
 
-        # Растяжка снизу — толкает всё вверх к центру
         layout.addStretch()
 
         self.setLayout(layout)
 
-        # Enter в поле пароля тоже пытается войти
         self.password_input.returnPressed.connect(self.try_login)
 
-    # Пытаемся войти: проверяем логин и пароль через базу
     def try_login(self):
         login = self.login_input.text().strip()
         password = self.password_input.text().strip()

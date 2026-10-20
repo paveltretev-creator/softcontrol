@@ -60,7 +60,6 @@ def get_manager_projects(manager_id: int):
     conn.close()
     return result
 
-# НОВАЯ ФУНКЦИЯ: Получаем ВСЕ проекты для админа
 def get_all_projects():
     conn = get_connection()
     cursor = conn.cursor()
@@ -165,7 +164,6 @@ def set_project_developers(project_id: int, new_developer_ids: list):
     conn.commit()
     conn.close()
 
-# НОВАЯ ФУНКЦИЯ: Назначаем менеджера и заказчика на проект
 def set_project_manager_and_customer(project_id: int, manager_id: int, customer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -305,7 +303,6 @@ def init_github_column():
         pass
     conn.close()
 
-# НОВАЯ ФУНКЦИЯ: Создаём новый проект
 def create_project(name: str, description: str, deadline: str, manager_id: int, customer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
