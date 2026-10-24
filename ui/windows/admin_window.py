@@ -14,6 +14,7 @@ from data import database
 from services import format_chat_messages
 from ui.dialogs.create_project_dialog import CreateProjectDialog
 from ui.dialogs.project_info_dialog import ProjectInfoDialog
+from ui.dialogs.archive_viewer_dialog import ArchiveViewerDialog
 
 
 class AdminWindow(QWidget):
@@ -46,6 +47,13 @@ class AdminWindow(QWidget):
         table_title.setFont(QFont("Arial", 12, QFont.Bold))
         table_header_layout.addWidget(table_title)
         table_header_layout.addStretch()
+        self.archive_btn = QPushButton("Архивировать просроченные")
+        self.archive_btn.clicked.connect(self.archive_expired_projects)
+        table_header_layout.addWidget(self.archive_btn)
+        
+        self.view_archive_btn = QPushButton("Просмотреть архив")
+        self.view_archive_btn.clicked.connect(self.view_archive)
+        table_header_layout.addWidget(self.view_archive_btn)
         self.create_btn = QPushButton("Создать проект")
         self.create_btn.clicked.connect(self.create_project)
         table_header_layout.addWidget(self.create_btn)
@@ -233,6 +241,58 @@ class AdminWindow(QWidget):
             self.load_chat_messages()
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось отправить сообщение:\n{e}")
+
+    def archive_expired_projects(self):
+        """Архивирует (делает бэкап) всех проектов с истёкшим дедлайном."""
+        try:
+            expired = database.get_expired_projects()
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка",
+                             f"Не удалось получить список проектов:\n{e}")
+            return
+
+        if not expired:
+            QMessageBox.information(
+                self, "Внимание",
+                "Проектов с истёкшим дедлайном не найдено")
+            return
+
+        # Формируем список названий для подтверждения
+        names = "\n".join(
+            f"• {name} (дедлайн: {deadline})"
+            for _, name, deadline in expired
+        )
+        reply = QMessageBox.question(
+            self, "Подтверждение архивации",
+            f"Будут созданы бэкапы следующих проектов ({len(expired)} шт.):\n\n"
+            f"{names}\n\nПродолжить?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        archived_count = 0
+        failed = []
+        for project_id, name, _ in expired:
+            try:
+                if database.archive_project(project_id):
+                    archived_count += 1
+                else:
+                    failed.append(name)
+            except Exception as e:
+                failed.append(f"{name} ({e})")
+
+        msg = f"Успешно архивировано проектов: {archived_count}"
+        if failed:
+            msg += "\n\nНе удалось архивировать:\n" + "\n".join(
+                f"• {n}" for n in failed)
+        QMessageBox.information(self, "Результат", msg)
+
+
+    def view_archive(self):
+        """Открывает диалог просмотра всех бэкапов."""
+        dialog = ArchiveViewerDialog(parent=self)
+        dialog.exec_()
 
     def showEvent(self, event):
         """При каждом показе окна обновляет список проектов."""

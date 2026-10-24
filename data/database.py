@@ -8,6 +8,7 @@
 - работы с чатом и GitHub-ссылками.
 """
 import sqlite3
+import datetime  # добавить в начало файла (к import sqlite3)
 
 DB_NAME = 'company_projects.db'
 
@@ -480,3 +481,170 @@ def create_project(name: str, description: str, deadline: str,
     conn.commit()
     conn.close()
     return project_id
+
+def init_archive_tables():
+    """Создаёт таблицы для хранения бэкапов (архива) проектов."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS archived_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_project_id INTEGER,
+            name TEXT,
+            description TEXT,
+            deadline TEXT,
+            github_url TEXT,
+            manager_fio TEXT,
+            customer_fio TEXT,
+            archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS archived_project_developers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            archived_project_id INTEGER NOT NULL,
+            developer_fio TEXT NOT NULL,
+            FOREIGN KEY (archived_project_id)
+                REFERENCES archived_projects(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+def get_expired_projects():
+    """
+    Возвращает список проектов с истёкшим дедлайном.
+    :return: список кортежей (id, name, deadline).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    today = datetime.date.today().isoformat()  # '2026-10-24'
+    cursor.execute('''
+        SELECT id, name, deadline
+        FROM projects
+        WHERE deadline IS NOT NULL AND deadline != '' AND deadline < ?
+        ORDER BY deadline ASC
+    ''', (today,))
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+
+def archive_project(project_id: int):
+    """
+    Создаёт бэкап проекта: сохраняет название, описание, дедлайн,
+    GitHub-ссылку, ФИО руководителя, заказчика и всех разработчиков.
+    :param project_id: id архивируемого проекта.
+    :return: True при успехе, False если проект не найден.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT p.id, p.name, p.description, p.deadline, p.github_url,
+               m.fio, c.fio
+        FROM projects p
+        LEFT JOIN managers m ON p.manager_id = m.id
+        LEFT JOIN customers c ON p.customer_id = c.id
+        WHERE p.id = ?
+    ''', (project_id,))
+    project = cursor.fetchone()
+    if not project:
+        conn.close()
+        return False
+
+    orig_id, name, description, deadline, github_url, manager_fio, customer_fio = project
+
+    cursor.execute('''
+        INSERT INTO archived_projects
+        (original_project_id, name, description, deadline,
+         github_url, manager_fio, customer_fio)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (orig_id, name, description, deadline,
+          github_url, manager_fio, customer_fio))
+    archived_id = cursor.lastrowid
+
+    cursor.execute('''
+        SELECT d.fio
+        FROM developers d
+        JOIN project_developers pd ON d.id = pd.developer_id
+        WHERE pd.project_id = ?
+    ''', (project_id,))
+    developers = cursor.fetchall()
+
+    for (dev_fio,) in developers:
+        cursor.execute('''
+            INSERT INTO archived_project_developers
+            (archived_project_id, developer_fio)
+            VALUES (?, ?)
+        ''', (archived_id, dev_fio))
+
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_all_archived_projects():
+    """
+    Возвращает список всех архивных проектов (бэкапов).
+    :return: список кортежей (id, original_project_id, name, description,
+             deadline, github_url, manager_fio, customer_fio, archived_at).
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, original_project_id, name, description, deadline,
+               github_url, manager_fio, customer_fio, archived_at
+        FROM archived_projects
+        ORDER BY archived_at DESC
+    ''')
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+
+def get_archived_project_info(archive_id: int):
+    """
+    Возвращает полную информацию об архивном проекте.
+    :return: словарь или None.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT name, description, deadline, github_url,
+               manager_fio, customer_fio, archived_at
+        FROM archived_projects WHERE id = ?
+    ''', (archive_id,))
+    info = cursor.fetchone()
+    if not info:
+        conn.close()
+        return None
+
+    cursor.execute('''
+        SELECT developer_fio
+        FROM archived_project_developers
+        WHERE archived_project_id = ?
+    ''', (archive_id,))
+    developers = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    return {
+        'name': info[0],
+        'description': info[1],
+        'deadline': info[2],
+        'github_url': info[3],
+        'manager_fio': info[4],
+        'customer_fio': info[5],
+        'archived_at': info[6],
+        'developers': developers
+    }
+
+
+def delete_archive(archive_id: int):
+    """Удаляет бэкап проекта по его id."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM archived_projects WHERE id = ?', (archive_id,))
+    conn.commit()
+    conn.close()

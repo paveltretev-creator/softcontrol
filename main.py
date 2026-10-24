@@ -28,6 +28,7 @@ class AppController:
         """Инициализация контроллера: создание стека окон и окна входа."""
         database.init_chat_table()
         database.init_github_column()
+        database.init_archive_tables()
         self.stack = QStackedWidget()
         self.stack.setWindowTitle("Софт контроль")
         self.stack.setMinimumSize(1200, 600)
